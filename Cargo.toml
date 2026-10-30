@@ -1,6 +1,6 @@
 [package]
 name = "mdview"
-version = "0.1.0"
+version = "0.1.2"
 edition = "2024"
 description = "Tiny, fast, native Markdown viewer for Windows: folder sidebar, live reload, light/dark."
 license = "MIT"
