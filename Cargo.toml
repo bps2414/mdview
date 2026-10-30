@@ -1,0 +1,27 @@
+[package]
+name = "mdview"
+version = "0.1.0"
+edition = "2024"
+description = "Tiny, fast, native Markdown viewer for Windows: folder sidebar, live reload, light/dark."
+license = "MIT"
+repository = "https://github.com/bps2414/mdview"
+readme = "README.md"
+keywords = ["markdown", "viewer", "windows", "webview2"]
+categories = ["command-line-utilities", "visualization"]
+
+[[bin]]
+name = "mdv"
+path = "src/main.rs"
+
+[dependencies]
+pulldown-cmark = { version = "0.13.6", default-features = false, features = ["html"] }
+serde_json = "1.0.154"
+tao = "0.37.2"
+wry = "0.57.1"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<style>
+:root{--bg:#fff;--fg:#1f2328;--mut:#656d76;--side:#f6f8fa;--line:#d0d7de;--acc:#0969da;--code:#eff1f3;--sel:#ddf4ff}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--mut:#8b949e;--side:#010409;--line:#30363d;--acc:#58a6ff;--code:#161b22;--sel:#1f2d3d}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{display:flex;background:var(--bg);color:var(--fg);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+#side{width:280px;flex:none;background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column}
+#q{margin:10px;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);font:inherit;outline:none}
+#q:focus{border-color:var(--acc)}
+#list{list-style:none;margin:0;padding:0 6px 10px;overflow:auto;flex:1}
+#list li{padding:5px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#list li:hover{background:var(--sel)}
+#list li.on{background:var(--sel);color:var(--acc);font-weight:600}
+#list .d{color:var(--mut);font-weight:400}
+#main{flex:1;overflow:auto}
+article{max-width:880px;margin:0 auto;padding:28px 40px 80px}
+.empty{color:var(--mut);text-align:center;margin-top:30vh}
+h1,h2,h3,h4{line-height:1.25;margin:1.6em 0 .6em}
+h1,h2{padding-bottom:.3em;border-bottom:1px solid var(--line)}
+h1{font-size:2em}h2{font-size:1.5em}h3{font-size:1.2em}
+article>:first-child{margin-top:0}
+a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
+code{background:var(--code);padding:.15em .4em;border-radius:5px;font:.88em Consolas,"Cascadia Mono",monospace}
+pre{background:var(--code);padding:14px 16px;border-radius:8px;overflow:auto}
+pre code{background:none;padding:0}
+table{border-collapse:collapse;display:block;overflow:auto}
+th,td{border:1px solid var(--line);padding:6px 12px}
+th{background:var(--side)}
+blockquote{margin:0;padding:0 1em;color:var(--mut);border-left:4px solid var(--line)}
+hr{border:0;border-top:1px solid var(--line)}
+img{max-width:100%}
+li>input[type=checkbox]{margin:0 .5em 0 -1.4em}
+</style>
+</head>
+<body>
+<nav id="side"><input id="q" placeholder="Filtrar…" autocomplete="off"><ul id="list"></ul></nav>
+<div id="main"><article id="doc"><p class="empty">Escolha um arquivo na lateral.</p></article></div>
+<script>
+const $=id=>document.getElementById(id), send=m=>window.ipc.postMessage(m);
+let files=[], cur="", shown="";
+function renderList(){
+  const f=$("q").value.toLowerCase(), ul=$("list");
+  ul.textContent="";
+  for(const p of files){
+    if(f&&!p.toLowerCase().includes(f))continue;
+    const i=p.lastIndexOf("/"), li=document.createElement("li");
+    li.dataset.p=p; li.title=p;
+    if(p===cur)li.className="on";
+    if(i>=0){const s=document.createElement("span");s.className="d";s.textContent=p.slice(0,i+1);li.append(s)}
+    li.append(p.slice(i+1));
+    ul.append(li);
+  }
+}
+window.setList=(f,c)=>{files=f;cur=c;renderList()};
+window.setContent=(html,name)=>{
+  const m=$("main"), y=name===shown?m.scrollTop:0;
+  shown=name; $("doc").innerHTML=html; m.scrollTop=y;
+};
+$("q").oninput=renderList;
+$("list").onclick=e=>{const li=e.target.closest("li");if(li)send("open:"+li.dataset.p)};
+$("doc").onclick=e=>{
+  const a=e.target.closest("a"); if(!a)return;
+  const h=a.getAttribute("href")||"";
+  if(h.startsWith("#"))return;
+  e.preventDefault();
+  send((/^(https?|mailto):/i.test(h)?"ext:":"link:")+h);
+};
+addEventListener("keydown",e=>{if(e.key==="F5"){e.preventDefault();send("refresh")}});
+send("ready");
+</script>
+</body>
+</html>
