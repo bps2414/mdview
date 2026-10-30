@@ -14,7 +14,7 @@ use tao::{
     dpi::LogicalSize,
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoopBuilder},
-    window::WindowBuilder,
+    window::{Icon, WindowBuilder},
 };
 use wry::{WebContext, WebViewBuilder};
 
@@ -102,6 +102,7 @@ fn main() {
 
     let window = WindowBuilder::new()
         .with_title("mdv")
+        .with_window_icon(Icon::from_rgba(include_bytes!("../assets/icon-64.rgba").to_vec(), 64, 64).ok())
         .with_inner_size(LogicalSize::new(1100.0, 780.0))
         .build(&event_loop)
         .expect("janela");

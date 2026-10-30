@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1020"/><stop offset="1" stop-color="#1b1640"/></linearGradient></defs>
+<rect width="1280" height="320" fill="url(#bg)"/>
+<g transform="translate(64 64) scale(0.75) translate(-16 -16)">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs>
+<rect x="16" y="16" width="224" height="224" rx="56" fill="url(#g)"/>
+<g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="22">
+<path d="M54 170V86l40 46 40-46v84" stroke="#fff"/>
+<path d="M182 86v76M158 140l24 26 24-26" stroke="#67e8f9"/>
+</g></g>
+<text x="300" y="166" font-family="'Segoe UI Semibold','Segoe UI',system-ui,sans-serif" font-size="112" font-weight="700" fill="#fff" letter-spacing="-2">mdview</text>
+<text x="304" y="218" font-family="'Segoe UI','Segoe UI Semilight',system-ui,sans-serif" font-size="34" fill="#a5b4fc">Tiny, fast, native Markdown viewer for Windows</text>
+</svg>
+

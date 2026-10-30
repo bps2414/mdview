@@ -1,4 +1,5 @@
-# mdview
+<p align="center"><img src="assets/banner.png" alt="mdview: tiny, fast, native Markdown viewer for Windows"></p>
+
 
 A tiny, fast, native Markdown viewer for Windows. Open a folder of `.md` files without launching an editor.
 
