@@ -44,10 +44,10 @@ fn scan(dir: &Path, root: &Path, out: &mut Vec<String>) {
             if !skip {
                 scan(&p, root, out);
             }
-        } else if is_md(&p) {
-            if let Ok(rel) = p.strip_prefix(root) {
-                out.push(rel.to_string_lossy().replace('\\', "/"));
-            }
+        } else if is_md(&p)
+            && let Ok(rel) = p.strip_prefix(root)
+        {
+            out.push(rel.to_string_lossy().replace('\\', "/"));
         }
     }
 }
@@ -90,7 +90,10 @@ fn main() {
     let arg = std::env::args_os().nth(1).map(PathBuf::from);
     let arg = arg.and_then(|p| std::path::absolute(p).ok());
     let (root, mut cur) = match arg {
-        Some(p) if p.is_file() => (p.parent().map(Path::to_path_buf).unwrap_or_default(), Some(p)),
+        Some(p) if p.is_file() => (
+            p.parent().map(Path::to_path_buf).unwrap_or_default(),
+            Some(p),
+        ),
         Some(p) if p.is_dir() => (p, None),
         _ => (PathBuf::from(DEFAULT_ROOT), None),
     };
@@ -102,7 +105,9 @@ fn main() {
 
     let window = WindowBuilder::new()
         .with_title("mdv")
-        .with_window_icon(Icon::from_rgba(include_bytes!("../assets/icon-64.rgba").to_vec(), 64, 64).ok())
+        .with_window_icon(
+            Icon::from_rgba(include_bytes!("../assets/icon-64.rgba").to_vec(), 64, 64).ok(),
+        )
         .with_inner_size(LogicalSize::new(1100.0, 780.0))
         .build(&event_loop)
         .expect("janela");
@@ -143,7 +148,10 @@ fn main() {
     event_loop.run(move |event, _, flow| {
         *flow = ControlFlow::Wait;
         match event {
-            Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => *flow = ControlFlow::Exit,
+            Event::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                ..
+            } => *flow = ControlFlow::Exit,
             Event::UserEvent(Msg::Tick) => {
                 let now = list_files(&root);
                 if now != files {
@@ -156,8 +164,15 @@ fn main() {
                     let m = mtime(p);
                     if m != cur_mtime {
                         cur_mtime = m;
-                        let name = p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-                        let _ = webview.evaluate_script(&format!("setContent({},{})", js(&render(p)), js(&name)));
+                        let name = p
+                            .file_name()
+                            .map(|n| n.to_string_lossy().into_owned())
+                            .unwrap_or_default();
+                        let _ = webview.evaluate_script(&format!(
+                            "setContent({},{})",
+                            js(&render(p)),
+                            js(&name)
+                        ));
                     }
                 }
             }
@@ -195,10 +210,17 @@ fn main() {
                     let c = cur.as_deref().map(|p| rel(&root, p)).unwrap_or_default();
                     let _ = webview.evaluate_script(&format!("setList({list},{})", js(&c)));
                     if let Some(p) = &cur {
-                        let name = p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                        let name = p
+                            .file_name()
+                            .map(|n| n.to_string_lossy().into_owned())
+                            .unwrap_or_default();
                         window.set_title(&format!("{name} — mdv"));
                         cur_mtime = mtime(p);
-                        let _ = webview.evaluate_script(&format!("setContent({},{})", js(&render(p)), js(&name)));
+                        let _ = webview.evaluate_script(&format!(
+                            "setContent({},{})",
+                            js(&render(p)),
+                            js(&name)
+                        ));
                     }
                 }
             }
