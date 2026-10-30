@@ -21,6 +21,8 @@ use wry::{WebContext, WebViewBuilder};
 const DEFAULT_ROOT: &str = r"D:\Bryan\Dev\Docs";
 const DATA_DIR: &str = r"D:\Bryan\Dev\Caches\mdview";
 const SKIP_DIRS: [&str; 3] = ["node_modules", "target", ".git"];
+const MAX_DEPTH: usize = 3;
+const MAX_FILES: usize = 1000;
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 enum Msg {
@@ -32,17 +34,20 @@ fn is_md(p: &Path) -> bool {
     p.extension().is_some_and(|e| e.eq_ignore_ascii_case("md"))
 }
 
-fn scan(dir: &Path, root: &Path, out: &mut Vec<String>) {
+fn scan(dir: &Path, root: &Path, depth: usize, out: &mut Vec<String>) {
     let Ok(rd) = fs::read_dir(dir) else { return };
     for e in rd.flatten() {
+        if out.len() >= MAX_FILES {
+            return;
+        }
         let p = e.path();
         if p.is_dir() {
             let skip = p
                 .file_name()
                 .and_then(|n| n.to_str())
                 .is_some_and(|n| SKIP_DIRS.contains(&n));
-            if !skip {
-                scan(&p, root, out);
+            if !skip && depth < MAX_DEPTH {
+                scan(&p, root, depth + 1, out);
             }
         } else if is_md(&p)
             && let Ok(rel) = p.strip_prefix(root)
@@ -54,7 +59,7 @@ fn scan(dir: &Path, root: &Path, out: &mut Vec<String>) {
 
 fn list_files(root: &Path) -> Vec<String> {
     let mut v = Vec::new();
-    scan(root, root, &mut v);
+    scan(root, root, 0, &mut v);
     v.sort_by_key(|s| s.to_lowercase());
     v
 }
@@ -75,11 +80,17 @@ fn render(p: &Path) -> String {
             html::push_html(&mut out, Parser::new_ext(&text, opts));
             out
         }
-        Err(e) => format!("<p class=\"empty\">Não consegui abrir o arquivo: {e}</p>"),
+        Err(e) => format!("<p class=\"empty\">Could not open the file: {e}</p>"),
     }
 }
 
 fn open_external(url: &str) {
+    let ok = ["http://", "https://", "mailto:"]
+        .iter()
+        .any(|s| url.to_lowercase().starts_with(s));
+    if !ok {
+        return;
+    }
     let _ = Command::new("rundll32")
         .args(["url.dll,FileProtocolHandler", url])
         .creation_flags(CREATE_NO_WINDOW)
@@ -89,7 +100,7 @@ fn open_external(url: &str) {
 fn main() {
     let arg = std::env::args_os().nth(1).map(PathBuf::from);
     let arg = arg.and_then(|p| std::path::absolute(p).ok());
-    let (root, mut cur) = match arg {
+    let (mut root, mut cur) = match arg {
         Some(p) if p.is_file() => (
             p.parent().map(Path::to_path_buf).unwrap_or_default(),
             Some(p),
@@ -99,6 +110,7 @@ fn main() {
     };
     let mut files = list_files(&root);
     let mut cur_mtime: Option<SystemTime> = None;
+    let mut ticks = 0u32;
 
     let event_loop = EventLoopBuilder::<Msg>::with_user_event().build();
     let proxy = event_loop.create_proxy();
@@ -153,12 +165,16 @@ fn main() {
                 ..
             } => *flow = ControlFlow::Exit,
             Event::UserEvent(Msg::Tick) => {
-                let now = list_files(&root);
-                if now != files {
-                    files = now;
-                    let list = serde_json::to_string(&files).unwrap_or_default();
-                    let c = cur.as_deref().map(|p| rel(&root, p)).unwrap_or_default();
-                    let _ = webview.evaluate_script(&format!("setList({list},{})", js(&c)));
+                ticks = ticks.wrapping_add(1);
+                // a lista de arquivos muda pouco: relê a cada 3 ticks (~2 s)
+                if ticks.is_multiple_of(3) {
+                    let now = list_files(&root);
+                    if now != files {
+                        files = now;
+                        let list = serde_json::to_string(&files).unwrap_or_default();
+                        let c = cur.as_deref().map(|p| rel(&root, p)).unwrap_or_default();
+                        let _ = webview.evaluate_script(&format!("setList({list},{})", js(&c)));
+                    }
                 }
                 if let Some(p) = &cur {
                     let m = mtime(p);
@@ -191,6 +207,31 @@ fn main() {
                         open_external(arg);
                         None
                     }
+                    "goto" | "folder" | "file" => {
+                        let picked = match cmd {
+                            "goto" => Some(PathBuf::from(arg)).filter(|p| p.is_dir()),
+                            "folder" => rfd::FileDialog::new().set_directory(&root).pick_folder(),
+                            _ => rfd::FileDialog::new()
+                                .set_directory(&root)
+                                .add_filter("Markdown", &["md", "markdown"])
+                                .pick_file(),
+                        };
+                        match picked {
+                            Some(p) if p.is_file() => {
+                                root = p.parent().map(Path::to_path_buf).unwrap_or_default();
+                                files = list_files(&root);
+                                Some(p)
+                            }
+                            Some(p) => {
+                                root = p;
+                                files = list_files(&root);
+                                cur = None;
+                                cur_mtime = None;
+                                files.first().map(|f| root.join(f))
+                            }
+                            None => None,
+                        }
+                    }
                     "ready" | "refresh" => {
                         files = list_files(&root);
                         cur_mtime = None; // força re-render no próximo Tick
@@ -205,7 +246,12 @@ fn main() {
                     cur = Some(p);
                     cur_mtime = None;
                 }
-                if matches!(cmd, "open" | "link" | "ready" | "refresh") {
+                if matches!(
+                    cmd,
+                    "open" | "link" | "ready" | "refresh" | "goto" | "folder" | "file"
+                ) {
+                    let _ = webview
+                        .evaluate_script(&format!("setRoot({})", js(&root.to_string_lossy())));
                     let list = serde_json::to_string(&files).unwrap_or_default();
                     let c = cur.as_deref().map(|p| rel(&root, p)).unwrap_or_default();
                     let _ = webview.evaluate_script(&format!("setList({list},{})", js(&c)));
@@ -221,6 +267,11 @@ fn main() {
                             js(&render(p)),
                             js(&name)
                         ));
+                    } else {
+                        window.set_title("mdv");
+                        let _ = webview.evaluate_script(
+                            "setContent('<p class=\"empty\">No Markdown files here.</p>','')",
+                        );
                     }
                 }
             }

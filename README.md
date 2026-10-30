@@ -5,6 +5,7 @@ A tiny, fast, native Markdown viewer for Windows. Open a folder of `.md` files w
 
 - Single `mdv.exe` (~850 KB), starts in about a tenth of a second
 - Sidebar with every `.md` in the folder (subfolders included) and a quick filter
+- Top bar to open a folder or a file, plus a clickable path to jump to any parent folder
 - Live reload when the file changes, scroll position kept
 - Tables, task lists, strikethrough, footnotes
 - Links between `.md` files open inside the app; web links open in your browser
@@ -53,6 +54,7 @@ The binary is `target\release\mdv.exe`.
 
 - Images with relative paths inside Markdown files are not loaded
 - No syntax highlighting in code blocks
+- The sidebar scans up to 3 subfolder levels and 1000 files
 - Windows only (WebView2)
 
 ## License

@@ -7,7 +7,16 @@
 @media(prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--mut:#8b949e;--side:#010409;--line:#30363d;--acc:#58a6ff;--code:#161b22;--sel:#1f2d3d}}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
-body{display:flex;background:var(--bg);color:var(--fg);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+body{display:flex;flex-direction:column;background:var(--bg);color:var(--fg);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+#bar{flex:none;display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--side);border-bottom:1px solid var(--line)}
+#bar button{display:flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);font:inherit;font-size:13px;cursor:pointer}
+#bar button:hover{background:var(--sel);border-color:var(--acc)}
+#bar svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#crumbs{flex:1;min-width:0;display:flex;align-items:center;overflow:hidden;white-space:nowrap;margin-left:6px;font-size:13px;color:var(--mut)}
+#crumbs span{cursor:pointer;padding:2px 4px;border-radius:4px}
+#crumbs span:hover{background:var(--sel);color:var(--acc)}
+#crumbs i{font-style:normal;opacity:.5}
+#wrap{flex:1;min-height:0;display:flex}
 #side{width:280px;flex:none;background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column}
 #q{margin:10px;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);font:inherit;outline:none}
 #q:focus{border-color:var(--acc)}
@@ -37,8 +46,15 @@ li>input[type=checkbox]{margin:0 .5em 0 -1.4em}
 </style>
 </head>
 <body>
-<nav id="side"><input id="q" placeholder="Filtrar…" autocomplete="off"><ul id="list"></ul></nav>
-<div id="main"><article id="doc"><p class="empty">Escolha um arquivo na lateral.</p></article></div>
+<header id="bar">
+<button id="bf" title="Open folder"><svg viewBox="0 0 16 16"><path d="M1.5 4.5v8h13v-7H7.5l-1.5-2h-4.5z"/></svg>Folder</button>
+<button id="bd" title="Open file"><svg viewBox="0 0 16 16"><path d="M3.5 1.5h6l3 3v10h-9zM9.5 1.5v3h3"/></svg>File</button>
+<div id="crumbs"></div>
+</header>
+<div id="wrap">
+<nav id="side"><input id="q" placeholder="Filter…" autocomplete="off"><ul id="list"></ul></nav>
+<div id="main"><article id="doc"><p class="empty">Pick a file from the sidebar.</p></article></div>
+</div>
 <script>
 const $=id=>document.getElementById(id), send=m=>window.ipc.postMessage(m);
 let files=[], cur="", shown="";
@@ -60,6 +76,20 @@ window.setContent=(html,name)=>{
   const m=$("main"), y=name===shown?m.scrollTop:0;
   shown=name; $("doc").innerHTML=html; m.scrollTop=y;
 };
+window.setRoot=r=>{
+  const c=$("crumbs"), parts=r.split("\\").filter(Boolean);
+  c.textContent=""; c.title=r;
+  let acc="";
+  parts.forEach((p,i)=>{
+    acc+=(i?"\\":"")+p; const path=i?acc:acc+"\\";
+    if(i){const s=document.createElement("i");s.textContent="›";c.append(s)}
+    const el=document.createElement("span");el.textContent=p;el.dataset.p=path;c.append(el);
+  });
+  c.scrollLeft=c.scrollWidth;
+};
+$("crumbs").onclick=e=>{const s=e.target.closest("span");if(s)send("goto:"+s.dataset.p)};
+$("bf").onclick=()=>send("folder:");
+$("bd").onclick=()=>send("file:");
 $("q").oninput=renderList;
 $("list").onclick=e=>{const li=e.target.closest("li");if(li)send("open:"+li.dataset.p)};
 $("doc").onclick=e=>{
